@@ -1,0 +1,20 @@
+[package]
+name = "bepinex-installer"
+version = "0.2.0"
+edition = "2021"
+
+# [profile.release]
+# strip = true
+# lto = true
+# panic = "abort"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bepinex_helpers = { path = "../bepinex_helpers" }
+tokio = { version = "1", features = ["full"] }
+octocrab = "0.17.0"
+eframe = "0.19.0"
+egui_extras = "0.19.0"
+semver = { workspace = true }
+lazy_static = { workspace = true }
