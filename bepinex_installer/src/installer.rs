@@ -70,7 +70,7 @@ impl App for Installer {
         CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
                 .size(Size::exact(20.0))
-                .size(Size::exact(350.0))
+                .size(Size::exact(20.0))
                 .size(Size::remainder())
                 .vertical(|mut strip| {
                     strip.cell(|ui| {
@@ -79,22 +79,57 @@ impl App for Installer {
                     strip.cell(|ui| {
                         self.show_bix_select(ui);
                     });
-                    strip.cell(|ui| {
-                        ui.centered_and_justified(|ui| {
-                            let install_btn = Button::new("Install");
-                            if let (Some(ref selected_game), Some(selected_bix)) =
-                                (&self.selected_game, &self.selected_bix)
-                            {
-                                let enabled = (selected_game.ty == Some(GameType::UnityIL2CPP)
-                                    && selected_bix.version >= *MIN_IL2CPP_STABLE_VERSION)
-                                    || (selected_game.ty != Some(GameType::UnityIL2CPP));
 
-                                if ui.add_enabled(enabled, install_btn).clicked() {
-                                    println!("{:#?}", self.selected_game);
-                                    println!("{:#?}", self.selected_bix);
+                    strip.strip(|builder| {
+                        builder
+                            .size(Size::remainder())
+                            .size(Size::exact(40.0))
+                            .vertical(|mut strip| {
+                                if let (Some(selected_game), Some(selected_bix)) =
+                                    (&self.selected_game, &self.selected_bix)
+                                {
+                                    let supported_ver = selected_game.ty
+                                        == Some(GameType::UnityIL2CPP)
+                                        && selected_bix.version >= *MIN_IL2CPP_STABLE_VERSION;
+
+                                    let enabled = supported_ver
+                                        || (selected_game.ty != Some(GameType::UnityIL2CPP));
+
+                                    strip.cell(|ui| {
+                                        ui.group(|ui| {
+                                            ui.horizontal(|ui| {
+                                                ui.label("Game type: ");
+                                                match &selected_game.ty {
+                                                    Some(ty) => ui.monospace(ty.to_string()),
+                                                    None => ui.monospace("Not Mono or IL2CPP"),
+                                                }
+                                            });
+                                            ui.horizontal(|ui| {
+                                                ui.label("Installed BepInEx: ");
+                                                match &selected_game.bepinex_version {
+                                                    Some(bix) => ui.monospace(bix.to_string()),
+                                                    None => ui.monospace("None"),
+                                                }
+                                            });
+                                        });
+                                    });
+                                    strip.cell(|ui| {
+                                        ui.centered_and_justified(|ui| {
+                                            let install_btn = Button::new("Install").small();
+                                            if ui.add_enabled(enabled, install_btn).clicked() {
+                                                todo!(
+                                                    "
+                                                Implement install logic:
+                                                    - Download correct zip (bix version, game type)
+                                                        - Support file names from 5.4.11
+                                                    - Unzip it
+                                                "
+                                                )
+                                            }
+                                        });
+                                    })
                                 }
-                            }
-                        });
+                            });
                     })
                 });
         });
