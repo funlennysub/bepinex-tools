@@ -1,11 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-pub mod bepinex;
 pub mod installer;
 
-use bepinex::BepInEx;
 use bepinex_helpers::game::get_unity_games;
-use eframe::{run_native, NativeOptions};
+use bepinex_sources::{
+    github::GitHubApi,
+    models::bleeding_edge::bepinex::{BepInEx, BepInExRelease},
+};
+use eframe::{egui, run_native, NativeOptions};
 use lazy_static::lazy_static;
 use semver::Version;
 
@@ -14,20 +16,17 @@ use crate::installer::Installer;
 lazy_static! {
     pub static ref MIN_SUPPORTED_STABLE_VERSION: Version = Version::parse("5.4.11").unwrap();
     pub static ref MIN_IL2CPP_STABLE_VERSION: Version = Version::parse("6.0.0-pre.1").unwrap();
+    pub static ref MIN_SUPPORTED_BE_VERSION: Version = Version::parse("6.0.0-be.510").unwrap();
 }
-pub const OLDEST_SUPPORTED_BE: u16 = 510;
 
-#[tokio::main]
-async fn main() {
-    let octocrab = octocrab::instance();
+fn main() {
+    let mut gh = GitHubApi::new("BepInEx", "BepInEx");
+    gh.set_pre_releases(true);
+    gh.set_min_tag(Some(MIN_SUPPORTED_STABLE_VERSION.clone()));
 
-    let stable_releases = BepInEx::get_stable_releases(octocrab).await;
-    if stable_releases.is_err() {
-        return;
-    }
-    let mut stable_releases = stable_releases.unwrap();
+    let stable_releases = gh.get_all().unwrap_or_default();
 
-    stable_releases.retain(|x| x.version >= *MIN_SUPPORTED_STABLE_VERSION);
+    let releases: Vec<BepInExRelease> = stable_releases.into_iter().map(|r| r.into()).collect();
 
     let games = get_unity_games();
     if games.is_err() {
@@ -36,18 +35,17 @@ async fn main() {
     let mut games = games.unwrap();
     games.sort();
 
+    let min_size = Some(egui::vec2(300.0, 450.0));
     let options = NativeOptions {
         follow_system_theme: true,
         transparent: false,
-        resizable: false,
-        initial_window_size: Some(eframe::egui::vec2(300.0, 450.0)),
+        initial_window_size: min_size,
+        min_window_size: min_size,
         ..NativeOptions::default()
     };
 
     let installer = Installer {
-        bepinex: BepInEx {
-            releases: stable_releases,
-        },
+        bepinex: BepInEx { releases },
         games,
         ..Installer::default()
     };

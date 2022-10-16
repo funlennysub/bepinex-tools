@@ -1,6 +1,13 @@
 [workspace]
-members = ["bepinex_installer/", "bepinex_helpers/"]
+members = ["bepinex_installer/", "bepinex_helpers/", "bepinex_sources/"]
 
 [workspace.dependencies]
 semver = "1.0.14"
 lazy_static = "1"
+
+[profile.release]
+strip = true
+lto = true
+panic = "abort"
+codegen-units = 1
+opt-level = "z"

@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 steamlocate = "1"
 pelite = "0.9.1"
-semver = { workspace = true }
+semver.workspace = true

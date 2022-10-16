@@ -1,0 +1,14 @@
+[package]
+name = "bepinex_sources"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bepinex_helpers = { path = "../bepinex_helpers" }
+anyhow = "1.0.65"
+reqwest = { version = "0.11.12", features = ["blocking", "json"] }
+semver = { workspace = true, features = ["serde"] }
+serde = { version = "1.0.145", features = ["derive"] }
+zip = "0.6.3"

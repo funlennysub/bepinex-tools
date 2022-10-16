@@ -4,11 +4,8 @@ use std::{
     fmt::Display,
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 use steamlocate::SteamDir;
-
-use crate::error::Error;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum GameType {
@@ -16,25 +13,11 @@ pub enum GameType {
     UnityIL2CPP,
 }
 
-impl ToString for GameType {
-    fn to_string(&self) -> String {
+impl Display for GameType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::UnityMono => "UnityMono".into(),
-            Self::UnityIL2CPP => "UnityIL2CPP".into(),
-        }
-    }
-}
-
-impl FromStr for GameType {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "UnityMono" => Ok(Self::UnityMono),
-            "Mono" => Ok(Self::UnityMono),
-            "UnityIL2CPP" => Ok(Self::UnityIL2CPP),
-            "IL2CPP" => Ok(Self::UnityIL2CPP),
-            _ => Err(Error::invalid_game_type()),
+            GameType::UnityMono => write!(f, "UnityMono"),
+            GameType::UnityIL2CPP => write!(f, "UnityIL2CPP"),
         }
     }
 }
@@ -113,6 +96,20 @@ impl Default for Game {
     }
 }
 
+impl Game {
+    pub fn to_query(&self, target: &Version) -> String {
+        match target.major {
+            6 => format!(
+                "BepInEx_{}_{}_{}.zip",
+                self.ty.as_ref().unwrap(),
+                self.arch,
+                target
+            ),
+            _ => format!("BepInEx_{}_{}.0.zip", self.arch, target),
+        }
+    }
+}
+
 impl Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
@@ -132,7 +129,7 @@ pub fn get_unity_games() -> Result<Vec<Game>, Box<dyn error::Error>> {
                 true => {
                     let mut game = Game {
                         name: app.name.clone().unwrap_or_default(),
-                        arch: "a".to_owned(),
+                        arch: "x64".to_owned(),
                         path: app.path.to_owned(),
                         bepinex_version: None,
                         ty: None,

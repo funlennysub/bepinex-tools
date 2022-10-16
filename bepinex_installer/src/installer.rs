@@ -1,14 +1,20 @@
+use std::time::Duration;
+
 use bepinex_helpers::game::{Game, GameType};
+use bepinex_sources::models::bleeding_edge::bepinex::{
+    AssetDownloader, BepInEx, BepInExRelease, ReleaseFlavor,
+};
 use eframe::{
-    egui::{Button, CentralPanel, ComboBox, Ui},
+    egui::{
+        Button, CentralPanel, ComboBox, Direction, FontFamily::Proportional, FontId, RichText,
+        TextStyle, Ui,
+    },
     App,
 };
 use egui_extras::{Size, StripBuilder};
+use egui_toast::{ToastOptions, Toasts};
 
-use crate::{
-    bepinex::{BepInEx, BepInExRelease},
-    MIN_IL2CPP_STABLE_VERSION,
-};
+use crate::MIN_IL2CPP_STABLE_VERSION;
 
 #[derive(Default, Debug)]
 pub struct Installer {
@@ -21,7 +27,7 @@ pub struct Installer {
     pub selected_game: Option<Game>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AdvancedSettings {
     picker: bool,
     bleeding_edge: bool,
@@ -29,14 +35,17 @@ pub struct AdvancedSettings {
 
 impl Installer {
     fn show_games_select(self: &mut Installer, ui: &mut Ui) {
+        let size = 45.;
+        ui.style_mut().text_styles = [(TextStyle::Button, FontId::new(size, Proportional))].into();
+
         ComboBox::from_id_source("game_selector")
             .width(ui.available_width() - 8.0)
-            .selected_text(
+            .selected_text(RichText::new(
                 self.selected_game
                     .as_ref()
                     .map(|e| format!("{}", e))
                     .unwrap_or_else(|| "Select a game".to_owned()),
-            )
+            ))
             .show_ui(ui, |ui| {
                 for game in self.games.iter() {
                     ui.selectable_value(&mut self.selected_game, Some(game.to_owned()), &game.name);
@@ -45,6 +54,9 @@ impl Installer {
     }
 
     fn show_bix_select(self: &mut Installer, ui: &mut Ui) {
+        let size = 45.;
+        ui.style_mut().text_styles = [(TextStyle::Button, FontId::new(size, Proportional))].into();
+
         ComboBox::from_id_source("bix_selector")
             .width(ui.available_width() - 8.0)
             .selected_text(
@@ -54,7 +66,16 @@ impl Installer {
                     .unwrap_or_else(|| "Select BepInEx version".to_owned()),
             )
             .show_ui(ui, |ui| {
-                for bix_ver in self.bepinex.releases.iter() {
+                for bix_ver in self.bepinex.releases.iter().filter(|r| {
+                    // .eq() because cargo fmt would move '== self' on a new line which makes it look ugly 🙄
+                    r.flavor.eq(self
+                        .advanced_settings
+                        .map(|s| match s.bleeding_edge {
+                            true => &ReleaseFlavor::BleedingEdge,
+                            false => &ReleaseFlavor::Stable,
+                        })
+                        .unwrap_or(&ReleaseFlavor::Stable))
+                }) {
                     ui.selectable_value(
                         &mut self.selected_bix,
                         Some(bix_ver.to_owned()),
@@ -67,10 +88,14 @@ impl Installer {
 
 impl App for Installer {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
+        let mut toasts = Toasts::new()
+            .anchor((10., 10.))
+            .direction(Direction::TopDown)
+            .align_to_end(false);
         CentralPanel::default().show(ctx, |ui| {
             StripBuilder::new(ui)
-                .size(Size::exact(20.0))
-                .size(Size::exact(20.0))
+                .size(Size::exact(50.0))
+                .size(Size::exact(50.0))
                 .size(Size::remainder())
                 .vertical(|mut strip| {
                     strip.cell(|ui| {
@@ -96,16 +121,22 @@ impl App for Installer {
                                         || (selected_game.ty != Some(GameType::UnityIL2CPP));
 
                                     strip.cell(|ui| {
+                                        ui.style_mut().text_styles = [
+                                            (TextStyle::Body, FontId::new(20.0, Proportional)),
+                                            (TextStyle::Monospace, FontId::new(18.0, Proportional)),
+                                        ]
+                                        .into();
                                         ui.group(|ui| {
                                             ui.horizontal(|ui| {
-                                                ui.label("Game type: ");
+                                                ui.label("Game type:");
                                                 match &selected_game.ty {
                                                     Some(ty) => ui.monospace(ty.to_string()),
                                                     None => ui.monospace("Not Mono or IL2CPP"),
                                                 }
                                             });
+                                            ui.separator();
                                             ui.horizontal(|ui| {
-                                                ui.label("Installed BepInEx: ");
+                                                ui.label("Installed BepInEx:");
                                                 match &selected_game.bepinex_version {
                                                     Some(bix) => ui.monospace(bix.to_string()),
                                                     None => ui.monospace("None"),
@@ -117,14 +148,29 @@ impl App for Installer {
                                         ui.centered_and_justified(|ui| {
                                             let install_btn = Button::new("Install").small();
                                             if ui.add_enabled(enabled, install_btn).clicked() {
-                                                todo!(
-                                                    "
-                                                Implement install logic:
-                                                    - Download correct zip (bix version, game type)
-                                                        - Support file names from 5.4.11
-                                                    - Unzip it
-                                                "
-                                                )
+                                                let options = ToastOptions {
+                                                    show_icon: true,
+                                                    ..ToastOptions::with_duration(
+                                                        Duration::from_secs(5),
+                                                    )
+                                                };
+
+                                                let query =
+                                                    selected_game.to_query(&selected_bix.version);
+                                                let res = selected_bix
+                                                    .assets
+                                                    .download(query, selected_game);
+                                                match res {
+                                                    Ok(_) => {
+                                                        toasts.success(
+                                                            "Start the game so you can install mods.",
+                                                            options,
+                                                        );
+                                                    }
+                                                    Err(e) => {
+                                                        toasts.error(e.to_string(), options);
+                                                    }
+                                                }
                                             }
                                         });
                                     })
@@ -133,5 +179,7 @@ impl App for Installer {
                     })
                 });
         });
+
+        toasts.show(ctx);
     }
 }
