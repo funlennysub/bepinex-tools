@@ -169,6 +169,12 @@ pub fn get_dll_version(path: PathBuf) -> Result<Version, Box<dyn error::Error>> 
         .get("ProductVersion")
         .ok_or("Failed to get prod. version")?;
 
+    // "Converts" 5.*.*.* into 5.*.* becuase BepInEx devs decided to add build num 💀
+    if version.starts_with('5') && version.split('.').count() > 3 {
+        let ver = version.split('.').into_iter().collect::<Vec<&str>>()[0..3].join(".");
+        return Ok(Version::parse(&ver).unwrap());
+    }
+
     // TODO: Do some proper handling of invalid semver that bix has in older versions 💀
     Ok(Version::parse(version).unwrap())
 }

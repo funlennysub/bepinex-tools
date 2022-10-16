@@ -117,7 +117,7 @@ impl App for Installer {
                                         == Some(GameType::UnityIL2CPP)
                                         && selected_bix.version >= *MIN_IL2CPP_STABLE_VERSION;
 
-                                    let enabled = supported_ver
+                                    let supported = supported_ver
                                         || (selected_game.ty != Some(GameType::UnityIL2CPP));
 
                                     strip.cell(|ui| {
@@ -147,13 +147,18 @@ impl App for Installer {
                                     strip.cell(|ui| {
                                         ui.centered_and_justified(|ui| {
                                             let install_btn = Button::new("Install").small();
-                                            if ui.add_enabled(enabled, install_btn).clicked() {
+                                            if ui.add(install_btn).clicked() {
                                                 let options = ToastOptions {
                                                     show_icon: true,
                                                     ..ToastOptions::with_duration(
                                                         Duration::from_secs(5),
                                                     )
                                                 };
+
+                                                if !supported {
+                                                    toasts.error(format!("Minimal BepInEx for this game is {}", *MIN_IL2CPP_STABLE_VERSION), options);
+                                                    return;
+                                                }
 
                                                 let query =
                                                     selected_game.to_query(&selected_bix.version);

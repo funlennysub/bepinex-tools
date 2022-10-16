@@ -2,7 +2,7 @@ use bepinex_sources::{github::GitHubApi, models::bleeding_edge::bepinex::BepInEx
 use semver::Version;
 
 fn main() -> anyhow::Result<()> {
-    let min_ver = Version::parse("5.4.21").unwrap();
+    let min_ver = Version::parse("5.4.11").unwrap();
     let mut gh = GitHubApi::new("BepInEx", "BepInEx");
     gh.set_pre_releases(true);
     gh.set_min_tag(Some(min_ver));
