@@ -4,8 +4,8 @@ pub mod installer;
 
 use bepinex_helpers::game::get_unity_games;
 use bepinex_sources::{
+    bepinex::{BepInEx, BepInExRelease},
     github::GitHubApi,
-    models::bleeding_edge::bepinex::{BepInEx, BepInExRelease},
 };
 use eframe::{egui, run_native, NativeOptions};
 use lazy_static::lazy_static;

@@ -1,9 +1,7 @@
 use std::time::Duration;
 
 use bepinex_helpers::game::{Game, GameType};
-use bepinex_sources::models::bleeding_edge::bepinex::{
-    AssetDownloader, BepInEx, BepInExRelease, ReleaseFlavor,
-};
+use bepinex_sources::bepinex::{AssetDownloader, BepInEx, BepInExRelease, ReleaseFlavor};
 use eframe::{
     egui::{
         Button, CentralPanel, ComboBox, Direction, FontFamily::Proportional, FontId, RichText,

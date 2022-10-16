@@ -1,4 +1,4 @@
-use bepinex_sources::{github::GitHubApi, models::bleeding_edge::bepinex::BepInExRelease};
+use bepinex_sources::{bepinex::BepInExRelease, github::GitHubApi};
 use semver::Version;
 
 fn main() -> anyhow::Result<()> {
