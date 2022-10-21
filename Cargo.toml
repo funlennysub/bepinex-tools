@@ -3,6 +3,7 @@ members = ["bepinex_installer/", "bepinex_helpers/", "bepinex_sources/"]
 
 [workspace.dependencies]
 semver = "1.0.14"
+anyhow = "1.0.65"
 lazy_static = "1"
 
 [profile.release]

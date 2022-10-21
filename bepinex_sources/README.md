@@ -5,4 +5,4 @@ Crate for working with different BepInEx sources such as [Bleeding edge builds](
 | Source             | Access all releases | Download specific release | Filter out releases | SourceRelease type into general type |
 | ------------------ | :-----------------: | ------------------------- | ------------------- | ------------------------------------ |
 | github.com         |          ✔          | ✔                         | ✔                   | ✔                                    |
-| builds.bepinex.dev |          ❌          | ❌                         | ❌                   | ❌                                    |
+| builds.bepinex.dev |          ✔          | ✔                         | ✔                   | ✔                                    |

@@ -1,7 +1,9 @@
 use std::fmt;
 
-use semver::{BuildMetadata, Prerelease, Version};
+use semver::Version;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
+
+use crate::version::VersionExt;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GitHubAsset {
@@ -18,16 +20,6 @@ pub struct GitHubRelease {
     pub assets: Vec<GitHubAsset>,
 }
 
-fn fix_version(major: u64, minor: u64) -> Version {
-    Version {
-        major,
-        minor,
-        patch: 0,
-        pre: Prerelease::EMPTY,
-        build: BuildMetadata::EMPTY,
-    }
-}
-
 fn try_to_parse(version: &str) -> Version {
     // Greatest fix, until ErrorKind is hidden from external crates, can't really do much
     let ver: Vec<u64> = version
@@ -35,7 +27,7 @@ fn try_to_parse(version: &str) -> Version {
         .map(|e| e.parse::<u64>().unwrap_or_default())
         .collect();
 
-    Version::parse(version).unwrap_or_else(|_| fix_version(ver[0], ver[1]))
+    Version::parse(version).unwrap_or_else(|_| Version::fix_version(ver[0], ver[1]))
 }
 
 fn parse_tag<'de, D>(deserializer: D) -> Result<Version, D::Error>

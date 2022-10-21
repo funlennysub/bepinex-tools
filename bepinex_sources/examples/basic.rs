@@ -8,8 +8,8 @@ fn main() -> anyhow::Result<()> {
     gh.set_min_tag(Some(min_ver));
 
     let releases = gh.get_all()?;
-    let bix_releases: Vec<BepInExRelease> = releases.into_iter().map(|r| r.into()).collect();
+    let bie_releases: Vec<BepInExRelease> = releases.into_iter().map(|r| r.into()).collect();
 
-    println!("{bix_releases:#?}");
+    println!("{bie_releases:#?}");
     Ok(())
 }

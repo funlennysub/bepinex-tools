@@ -6,9 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bepinex_helpers = { path = "../bepinex_helpers" }
-anyhow = "1.0.65"
+lazy_static.workspace = true
+bepinex_helpers = { version ="0.1.0", path = "../bepinex_helpers" }
+anyhow.workspace = true
 reqwest = { version = "0.11.12", features = ["blocking", "json"] }
 semver = { workspace = true, features = ["serde"] }
 serde = { version = "1.0.145", features = ["derive"] }
 zip = "0.6.3"
+scraper = "0.13.0"
+regex = { version = "1.6.0", features = ["pattern"] }

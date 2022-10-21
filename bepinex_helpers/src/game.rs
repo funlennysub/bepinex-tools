@@ -7,6 +7,33 @@ use std::{
 };
 use steamlocate::SteamDir;
 
+#[macro_export]
+macro_rules! game_type {
+    ($ty:expr) => {
+        $ty.as_ref()
+            .unwrap()
+            .to_string()
+            .split('.')
+            .collect::<Vec<_>>()
+            .join("")
+    };
+}
+
+#[derive(Debug)]
+pub enum GameArch {
+    X64,
+    X86,
+}
+
+impl Display for GameArch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GameArch::X64 => write!(f, "x64"),
+            GameArch::X86 => write!(f, "x86"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum GameType {
     UnityMono,
@@ -16,8 +43,8 @@ pub enum GameType {
 impl Display for GameType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GameType::UnityMono => write!(f, "UnityMono"),
-            GameType::UnityIL2CPP => write!(f, "UnityIL2CPP"),
+            GameType::UnityMono => write!(f, "Unity.Mono"),
+            GameType::UnityIL2CPP => write!(f, "Unity.IL2CPP"),
         }
     }
 }
@@ -32,12 +59,12 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn set_bix(&mut self, bix: Option<Version>) {
-        self.bepinex_version = bix;
+    pub fn set_bie(&mut self, bie: Option<Version>) {
+        self.bepinex_version = bie;
     }
 
-    pub fn set_arch(&mut self, arch: String) {
-        self.arch = arch;
+    pub fn set_arch(&mut self, arch: GameArch) {
+        self.arch = arch.to_string();
     }
 
     pub fn set_ty(&mut self, ty: Option<GameType>) {
@@ -57,6 +84,22 @@ impl Game {
             }
             false => None,
         }
+    }
+
+    pub fn get_game_arch(&self) -> GameArch {
+        let path = &self.path.join(format!("{}.exe", &self.name));
+        fs::read(path)
+            .map(|bytes| {
+                let start =
+                    i32::from_le_bytes(bytes[60..64].try_into().unwrap_or_default()) as usize;
+                let machine_type =
+                    u16::from_le_bytes(bytes[start + 4..start + 6].try_into().unwrap_or_default());
+                match machine_type {
+                    34404 => GameArch::X64,
+                    _ => GameArch::X86,
+                }
+            })
+            .unwrap_or_else(|_| GameArch::X64)
     }
 
     pub fn get_game_type(&self) -> Option<GameType> {
@@ -96,20 +139,6 @@ impl Default for Game {
     }
 }
 
-impl Game {
-    pub fn to_query(&self, target: &Version) -> String {
-        match target.major {
-            6 => format!(
-                "BepInEx_{}_{}_{}.zip",
-                self.ty.as_ref().unwrap(),
-                self.arch,
-                target
-            ),
-            _ => format!("BepInEx_{}_{}.0.zip", self.arch, target),
-        }
-    }
-}
-
 impl Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
@@ -135,10 +164,12 @@ pub fn get_unity_games() -> Result<Vec<Game>, Box<dyn error::Error>> {
                         ty: None,
                     };
 
-                    let bix_ver = game.get_installed_bepinex_version();
+                    let bie_ver = game.get_installed_bepinex_version();
                     let game_type = game.get_game_type();
-                    game.set_bix(bix_ver);
+                    let game_arch = game.get_game_arch();
+                    game.set_bie(bie_ver);
                     game.set_ty(game_type);
+                    game.set_arch(game_arch);
 
                     Some(game)
                 }
@@ -175,6 +206,6 @@ pub fn get_dll_version(path: PathBuf) -> Result<Version, Box<dyn error::Error>> 
         return Ok(Version::parse(&ver).unwrap());
     }
 
-    // TODO: Do some proper handling of invalid semver that bix has in older versions 💀
+    // TODO: Do some proper handling of invalid semver that bie has in older versions 💀
     Ok(Version::parse(version).unwrap())
 }
