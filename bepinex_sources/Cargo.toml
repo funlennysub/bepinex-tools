@@ -1,13 +1,13 @@
 [package]
 name = "bepinex_sources"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 lazy_static.workspace = true
-bepinex_helpers = { version ="0.1.0", path = "../bepinex_helpers" }
+bepinex_helpers = { path = "../bepinex_helpers" }
 anyhow.workspace = true
 reqwest = { version = "0.11.12", features = ["blocking", "json"] }
 semver = { workspace = true, features = ["serde"] }

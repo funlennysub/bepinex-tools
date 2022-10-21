@@ -1,8 +1,10 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
-use bepinex_helpers::game::{Game, GameType};
+use bepinex_helpers::game::{get_unity_games, Game, GameType};
 use bepinex_sources::{
     bepinex::{AssetDownloader, BepInEx, BepInExRelease, ReleaseFlavor},
+    builds::BuildsApi,
+    github::GitHubApi,
     version::VersionExt,
 };
 use eframe::{
@@ -11,8 +13,11 @@ use eframe::{
 };
 use egui_extras::{Size, StripBuilder};
 use egui_toast::{ToastOptions, Toasts};
+use parking_lot::Once;
 
-use crate::MIN_IL2CPP_STABLE_VERSION;
+use crate::{MIN_IL2CPP_STABLE_VERSION, MIN_SUPPORTED_STABLE_VERSION};
+
+static INIT_BIE: Once = Once::new();
 
 #[derive(Default)]
 pub struct Installer {
@@ -22,11 +27,63 @@ pub struct Installer {
     pub games: Vec<Game>,
     pub selected_game: Option<Game>,
     pub dl_promise: Option<poll_promise::Promise<anyhow::Result<()>>>,
+    pub fetch_promises: HashMap<String, poll_promise::Promise<Vec<BepInExRelease>>>,
     pub shown_toast: bool,
 }
 
 impl Installer {
-    fn show_games_select(self: &mut Installer, ui: &mut Ui) {
+    pub fn new() -> Self {
+        let mut new_app = Self::default();
+        let bie = BepInEx::default();
+
+        let gh_promise = poll_promise::Promise::spawn_thread("gh_fetch", || {
+            let mut gh = GitHubApi::new("BepInEx", "BepInEx");
+            gh.set_pre_releases(true);
+            gh.set_min_tag(Some(MIN_SUPPORTED_STABLE_VERSION.clone()));
+
+            gh.get_all()
+                .unwrap_or_default()
+                .into_iter()
+                .map(BepInExRelease::from)
+                .collect::<Vec<_>>()
+        });
+        new_app.fetch_promises.insert("gh_fetch".into(), gh_promise);
+
+        let be_promise = poll_promise::Promise::spawn_thread("be_fetch", || {
+            let be = BuildsApi::new("https://builds.bepinex.dev");
+            be.get_builds()
+                .unwrap_or_default()
+                .into_iter()
+                .map(BepInExRelease::from)
+                .collect::<Vec<_>>()
+        });
+        new_app.fetch_promises.insert("be_fetch".into(), be_promise);
+
+        let mut games = get_unity_games().unwrap_or_default();
+        games.sort();
+
+        new_app.games = games;
+        new_app.bepinex = bie;
+        new_app.selected_bie = new_app.bepinex.latest();
+
+        new_app
+    }
+
+    fn fetch(&mut self) {
+        let gh_promise = self.fetch_promises.get("gh_fetch").unwrap();
+        let be_promise = self.fetch_promises.get("be_fetch").unwrap();
+        if let (Some(gh_releases), Some(be_releases)) = (gh_promise.ready(), be_promise.ready()) {
+            INIT_BIE.call_once(|| {
+                let mut releases: Vec<BepInExRelease> = Vec::new();
+                releases.extend(gh_releases.iter().cloned());
+                releases.extend(be_releases.iter().cloned());
+
+                self.bepinex.releases = releases;
+            });
+        }
+    }
+
+    fn show_games_select(&mut self, ui: &mut Ui) {
         ComboBox::from_id_source("game_selector")
             .width(ui.available_width() - 8.0)
             .selected_text(
@@ -42,7 +99,7 @@ impl Installer {
             });
     }
 
-    fn show_bie_select(self: &mut Installer, ui: &mut Ui) {
+    fn show_bie_select(&mut self, ui: &mut Ui) {
         ComboBox::from_id_source("bie_selector")
             .width(ui.available_width() - 8.0)
             .selected_text(
@@ -68,7 +125,7 @@ impl Installer {
             });
     }
 
-    fn release_flavor_select(self: &mut Installer, ui: &mut Ui) {
+    fn release_flavor_select(&mut self, ui: &mut Ui) {
         ui.radio_value(
             &mut self.release_flavor,
             ReleaseFlavor::Stable,
@@ -81,7 +138,7 @@ impl Installer {
         );
     }
 
-    fn install_bie(self: &mut Installer, toasts: &mut Toasts, options: ToastOptions) {
+    fn install_bie(&mut self, toasts: &mut Toasts, options: ToastOptions) {
         if let (Some(selected_game), Some(selected_bie)) = (&self.selected_game, &self.selected_bie)
         {
             let supported_ver = selected_game.ty == Some(GameType::UnityIL2CPP)
@@ -202,6 +259,8 @@ impl App for Installer {
                                                 self.install_bie(&mut toasts, options);
                                             }
                                             if let Some(dl_promise) = &self.dl_promise {
+                                                // Not the best solution but it works
+                                                ctx.request_repaint();
                                                 if let Some(r) = dl_promise.ready() {
                                                     if let Err(e) = r {
                                                         toasts.error(e.to_string(), options);
@@ -222,7 +281,10 @@ impl App for Installer {
                 });
         });
 
+        if self.bepinex.releases.is_empty() {
+            self.fetch()
+        };
+
         toasts.show(ctx);
-        ctx.request_repaint();
     }
 }
