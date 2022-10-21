@@ -259,8 +259,6 @@ impl App for Installer {
                                                 self.install_bie(&mut toasts, options);
                                             }
                                             if let Some(dl_promise) = &self.dl_promise {
-                                                // Not the best solution but it works
-                                                ctx.request_repaint();
                                                 if let Some(r) = dl_promise.ready() {
                                                     if let Err(e) = r {
                                                         toasts.error(e.to_string(), options);
@@ -285,6 +283,7 @@ impl App for Installer {
             self.fetch()
         };
 
+        ctx.request_repaint_after(Duration::from_secs(1));
         toasts.show(ctx);
     }
 }
